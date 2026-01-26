@@ -1,2 +1,396 @@
 # mcpp-style-ref
-mcpp style reference | 现代C++编码/项目风格参考
+
+> Modern/Module C++ Style Reference | 现代C++编码/项目风格参考
+
+[![C++23](https://img.shields.io/badge/C%2B%2B-23-blue.svg)](https://en.cppreference.com/w/cpp/23)
+[![Module](https://img.shields.io/badge/module-ok-green.svg)](https://en.cppreference.com/w/cpp/language/modules)
+[![License](https://img.shields.io/badge/license-Apache_2.0-blue.svg)](LICENSE-CODE)
+
+| [示例代码](./src) - [官网](https://mcpp.d2learn.org) - [论坛](https://mcpp.d2learn.org/forum) |
+| --- |
+
+```cpp
+import std;
+
+int main() {
+    std::println("开启你的现代C++模块化之旅...");
+}
+```
+
+> [!CAUTION]
+> 现代C++编码/项目风格文档, 仅作为模块化C++项目的参考且在不断完善中, 如果您有发现任何问题欢迎[创建issues](https://github.com/mcpp-community/mcpp-style-ref/issues)或[论坛发帖](https://mcpp.d2learn.org/forum)进行反馈, 或提交PR进行修复
+
+## 目录
+
+- 0.[使用`import xxx`替代`#include <xxx>`](./README.md#0使用import-xxx替代include-xxx)
+- 1.[模块文件结构](./README.md#1模块文件结构)
+- 2.[使用模块`.cppm`替代头文件`.h`、`.hpp`](./README.md#2使用模块cppm替代头文件hhpp)
+- 3.[模块实现与接口导出分离](./README.md#3模块实现与接口导出分离)
+- 4.[模块及模块分区命名规范](./README.md#4模块及模块分区命名规范)
+- 5.[多文件模块和目录](./README.md#5多文件模块和目录)
+- 6.[可导出模块分区和内部模块分区](./README.md#6可导出模块分区和内部模块分区)
+- 7.[模块化与向前兼容](./README.md#7模块化与向前兼容)
+- 8.[其他](./README.md#8其他)
+  - 8.1 尽可能的少使用宏
+  - 8.2 导出模板接口时注意全局静态成员
+
+## 正文
+
+### 0.使用`import xxx`替代`#include <xxx>`
+
+**旧式`#include`写法**
+
+```cpp
+#include <print>;
+
+int main() {
+    std::println("Hello, MC++!");
+}
+```
+
+**模块导入写法**
+
+```cpp
+import std;
+
+int main() {
+    std::println("Hello, MC++!");
+}
+```
+
+### 1.模块文件结构
+
+```cpp
+// 0.全局模块片段(可选)
+module; // 当需要使用传统头文件时使用
+
+// 1.传统头文件引入区域
+#include <xxx>
+
+// 2.模块声明和导出
+export module module_name;
+
+// 2.1 导入导出模块分区接口 (可选)
+//export module :xxxx;
+
+// 3.模块导入区域
+import std;
+import xxx;
+
+// 3.1 导入模块分区接口 (可选)
+//import :xxxxx;
+
+// 4.接口导出与实现区域
+export int add(int a, int b) {
+    return a + b;
+}
+```
+
+### 2.使用模块`.cppm`替代头文件`.h`、`.hpp`
+
+> 可以把导出接口和接口实现都放到`.cppm`文件中.
+
+#### 2.1 传统代码文件风格
+
+**传统风格1 - `.cpp` + `.h`**
+
+```cpp
+// mcpplibs.h
+#ifndef MCPPLIBS_H
+#define MCPPLIBS_H
+
+int add(int a, int b);
+
+#endif
+```
+
+```cpp
+// mcpplibs.cpp
+#include <mcpplibs.h>
+
+int add(int a, int b) {
+    return a + b;
+}
+```
+
+**传统风格2 - `.hpp`**
+
+```cpp
+// mcpplibs.hpp
+#ifndef MCPPLIBS_HPP
+#define MCPPLIBS_HPP
+
+int add(int a, int b) {
+    return a + b;
+}
+
+#endif
+```
+
+#### 2.2 模块化文件
+
+> 模块中的接口, 默认外界是不能使用的.要导出的接口需要在前面加`export`关键字
+
+```cpp
+// mcpplibs.mcpp
+
+// 模块导出
+export module mcpplibs;
+
+// 接口导出
+export int add(int a, int b);
+
+// 接口实现
+int add(int a, int b) {
+    return a + b;
+}
+```
+
+或
+
+```cpp
+// mcpplibs.mcpp
+
+// 模块导出
+export module mcpplibs;
+
+// 接口导出 & 实现
+export int add(int a, int b) {
+    return a + b;
+}
+```
+
+### 3.模块实现与接口导出分离
+
+> 通过命名空间隔离模块实现和接口导出, 可以有选择的控制导出接口
+
+```cpp
+// mcpplibs.mcpp
+
+// 模块导出
+export module mcpplibs;
+
+// 模块的具体实现 / 私有接口
+namespace mcpplibs_impl {
+    int add(int a, int b) {
+        return a + b;
+    }
+
+    int other(int a, int b) {
+        return a + b;
+    }
+};
+
+// 导出整个命名空间
+// 然后把部分需要导出的接口放到这个导出空间中
+export namespace mcpplibs {
+    using mcpplibs_impl::add;
+};
+```
+
+### 4.模块及模块分区命名规范
+
+> 使用文件(及目录)名 + `.`层级分割符进行模块命名, 降低同名模块冲突概率
+
+- 模块名格式: `topdir.subdir1.subdir2.filename`
+- 模块分区名: `topdir.subdir1.subdir2.module_filename:filename`
+
+#### 项目结构
+
+```cpp
+.
+├── a
+│   └── c.cppm
+├── b
+│   └── c.cppm
+└── main.cpp
+```
+
+#### 模块命名示例
+
+`a/c.cppm`
+
+```cpp
+//...
+export module a.c;
+//...
+```
+
+`b/c.cppm`
+
+```cpp
+//...
+export module b.c;
+//...
+```
+
+#### `main.cpp`中使用
+
+```cpp
+import std;
+
+import a.c;
+import b.c;
+
+int main() {
+    //...
+}
+```
+
+### 5.多文件模块和目录
+
+> 当一个模块内容太多, 需要进一步分文件时可以采用 `目录` + `模块或模块分区组合`的方式进行实现
+
+- 一个文件夹 + 一个模块声明文件
+  - 文件夹: 同一模块的实现分散到不同文件实现
+  - 模块文件: 对外接口导出的汇总文件
+
+#### 5.1 项目结构
+
+```cpp
+.
+├── a // 模块a实现
+│   ├── a1.cppm // a:a1
+│   ├── a2.cppm // a:a2
+│   ├── b // 模块a.b实现
+│   │   ├── b1.cppm // a.b:b1;
+│   │   └── b2.cppm // a.b:b2;
+│   ├── b.cppm // 模块a.b声明及导出
+│   └── c.cppm // 独立模块a.c的实现 + 声明及导出(都在一个文件)
+├── a.cppm // 模块a声明及导出
+└── main.cpp
+
+3 directories, 7 files
+```
+
+#### 5.2 模块
+
+**`a.b`模块**
+
+> 模块的导出文件
+
+```cpp
+// a/b
+export module a.b;
+
+export import :b1; // 导出a.b的b1分区
+export import :b2; // 导出a.b的b2分区
+
+//...
+```
+
+**`a.b:b1`模块分区**
+
+```cpp
+// a/b/b1.cppm
+export module a.b:b1;
+//...
+```
+
+**`a.b:b2`模块分区**
+
+```cpp
+// a/b/b2.cppm
+export module a.b:b2;
+//...
+```
+
+**`a`模块**
+
+```cpp
+// a.cppm
+export module a;
+
+export import a.b;
+export import :a2; // 导入&出模块a的分区a2
+
+import std;
+import :a1; // 导入模块a的内部分区a1
+
+export namespace a {
+    //...
+}
+```
+
+### 6.可导出模块分区和内部模块分区
+
+> 当一个模块有多个分区时, 分可导出的分区已经仅内部使用的部分
+
+#### 6.1 分区实现
+
+**`a.a2`可导出模块分区**
+
+> 通过`export`修饰模块分区
+
+```cpp
+// a/a2.cppm
+export module a:a2;
+//...
+```
+
+**`a.a1`内部模块分区**
+
+> 内部模块分区, 不能使用`export`来修饰模块名和分区里的接口
+
+```cpp
+// a/a1.cppm
+module a:a1;
+//...
+
+// export void test() { } // error
+void test() { } // ok
+```
+
+#### 6.2 使用分区
+
+```cpp
+export module a;
+
+export import :a2; // 使用可导出分区要加export
+
+import :a1; // 使用内部分区不能加export且只能模块内部使用
+```
+
+### 7.模块化与向前兼容
+
+> C/C++以有生态中没有模块化的库, 可以把项目所有引入的传统头文件库封装到一个专门的"兼容模块中", 然后在该模块中把接口进行"重新导出", 来最小化 `全局模块/传统头文件` 的使用范围
+
+`c语言lua库, 以lua.cppm的方式用模块化"重导入"`
+
+```cpp
+module;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <lua.h>
+#include <lauxlib.h>
+#include <lualib.h>
+
+#ifdef __cplusplus
+}
+#endif
+
+export module lua;
+
+//import std;
+
+export namespace lua {
+    using lua_State = ::lua_State;
+    using lua_CFunction = ::lua_CFunction;
+
+    //...
+}
+```
+
+### 8.其他
+
+>...
+
+---
+
+## 相关链接
+
+- [mcpp社区官网](https://mcpp.d2learn.org)
+- [mcpp开源主页](https://github.com/mcpp-community)
