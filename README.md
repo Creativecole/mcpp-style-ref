@@ -22,21 +22,135 @@ int main() {
 
 ## 目录
 
-- 0.[使用`import xxx`替代`#include <xxx>`](./README.md#0使用import-xxx替代include-xxx)
-- 1.[模块文件结构](./README.md#1模块文件结构)
-- 2.[使用模块`.cppm`替代头文件`.h`、`.hpp`](./README.md#2使用模块cppm替代头文件hhpp)
-- 3.[模块实现与接口导出分离](./README.md#3模块实现与接口导出分离)
-- 4.[模块及模块分区命名规范](./README.md#4模块及模块分区命名规范)
-- 5.[多文件模块和目录](./README.md#5多文件模块和目录)
-- 6.[可导出模块分区和内部模块分区](./README.md#6可导出模块分区和内部模块分区)
-- 7.[模块化与向前兼容](./README.md#7模块化与向前兼容)
-- 8.[其他](./README.md#8其他)
-  - 8.1 尽可能的少使用宏
-  - 8.2 导出模板接口时注意全局静态成员
+- 一、`标识符`命名风格
+  - 1.0 [类型名 - 大驼峰](./README.md#10-类型名---大驼峰)
+  - 1.1 [对象/数据成员 - 小驼峰](./README.md#11-对象数据成员---小驼峰)
+  - 1.2 [函数 - 下划线(snake_case)](./README.md#12-函数---下划线snake_case)
+  - 1.3 [私有表示 - `_`后缀](./README.md#13-私有表示---_后缀)
+  - 1.4 [其他](./README.md#14-其他)
+- 二、模块化
+  - 2.0 [使用`import xxx`替代`#include <xxx>`](./README.md#20-使用import-xxx替代include-xxx)
+  - 2.1 [模块文件结构](./README.md#21-模块文件结构)
+  - 2.2 [使用模块`.cppm`替代头文件`.h`、`.hpp`](./README.md#22-使用模块cppm替代头文件hhpp)
+  - 2.3 [模块实现与接口导出分离](./README.md#23-模块实现与接口导出分离)
+  - 2.4 [模块及模块分区命名规范](./README.md#24-模块及模块分区命名规范)
+  - 2.5 [多文件模块和目录](./README.md#25-多文件模块和目录)
+  - 2.6 [可导出模块分区和内部模块分区](./README.md#26-可导出模块分区和内部模块分区)
+  - 2.7 [模块化与向前兼容](./README.md#27-模块化与向前兼容)
+  - 2.8 [其他](./README.md#28-其他)
+    - 2.8.1 尽可能的少使用宏
+    - 2.8.2 导出模板接口时注意全局静态成员
 
-## 正文
+## 一、`标识符`命名风格
 
-### 0.使用`import xxx`替代`#include <xxx>`
+> 核心思想通过`标识符`风格设计, 能快速识别 - 类型、函数、数据以及封装性
+
+```cpp
+import std;
+
+namespace mcpplibs {  // 1.命名空间全小写
+
+class StyleRef { // 2.类型名大驼峰
+
+private:
+    int data_; // 3.私有数据成员 xxx_
+    std::string fileName_; // std::string
+
+public: // 4. 构造函数 / Rule of Five（Big Five）单独放一个 public 区域
+
+    StyleRef() { }
+    StyleRef(const StyleRef &obj) { /* ... */ }
+    StyleRef(StyleRef &&) { /* ... */ }
+    StyleRef & operator=(const StyleRef &) { /* ... */ }
+    StyleRef & operator=(StyleRef &&) { /* ... */ }
+    ~StyleRef() { /* ... */ }
+
+public: // 5.公有函数区域
+
+    // 函数名 下划线分割 / snake_case
+    /* 7. fileName 小驼峰 */
+    void load_config_file(std::string fileName) {
+        // 成员函数如无特殊要求接口和实现不分离
+        parse_(fileName);
+    }
+
+private:
+
+    // 6.私有成员函数以 `_` 结尾
+    void parse_(std::string config) {
+
+    }
+
+};
+
+}
+```
+
+### 1.0 类型名 - 大驼峰
+
+> 单词首字母都大写, 单词之间不加下划线. 
+
+- 例: `StyleRef, HttpServer, JsonParser`
+
+```cpp
+struct StyleRef {
+    using FileNameType = std::string;
+}; 
+```
+
+### 1.1 对象/数据成员 - 小驼峰
+
+> 一个单词首字母小写, 后续单词首字母大写, 不加下划线
+
+- 例: `fileName, configText`
+
+```cpp
+struct StyleRef {
+    std::string fileName;
+};
+
+StyleRef mcppStyle;
+```
+
+### 1.2 函数 - 下划线(snake_case)
+
+> 全小写(通常), 单词用下划线连接
+
+- 例: `load_config_file(), parse_(), max_retry_count()`
+
+```cpp
+class StyleRef {
+public:
+    void load_config_file(std::string fileName) {
+
+    }
+};
+```
+
+### 1.3 私有表示 - `_`后缀
+
+> 在标识符后加上`_`表示是对外部不可访问/私有的数据, 即可以是数据成员也可以是函数
+
+- 例: `fileName_, parse_`
+
+```cpp
+class StyleRef {
+private:
+    std::string fileName_;
+
+    void parse_(std::string config) {
+
+    }
+};
+```
+
+### 1.4 其他
+
+- 全局数据/成员, 通过前缀`g`表示. 例如: `StyleRef gStyleRef;`
+
+## 二、模块化
+
+### 2.0 使用`import xxx`替代`#include <xxx>`
 
 **旧式`#include`写法**
 
@@ -58,7 +172,7 @@ int main() {
 }
 ```
 
-### 1.模块文件结构
+### 2.1 模块文件结构
 
 ```cpp
 // 0.全局模块片段(可选)
@@ -86,11 +200,11 @@ export int add(int a, int b) {
 }
 ```
 
-### 2.使用模块`.cppm`替代头文件`.h`、`.hpp`
+### 2.2 使用模块`.cppm`替代头文件`.h`、`.hpp`
 
 > 可以把导出接口和接口实现都放到`.cppm`文件中.
 
-#### 2.1 传统代码文件风格
+#### 2.2.1 传统代码文件风格
 
 **传统风格1 - `.cpp` + `.h`**
 
@@ -127,7 +241,7 @@ int add(int a, int b) {
 #endif
 ```
 
-#### 2.2 模块化文件
+#### 2.2.2 模块化文件
 
 > 模块中的接口, 默认外界是不能使用的.要导出的接口需要在前面加`export`关键字
 
@@ -160,7 +274,7 @@ export int add(int a, int b) {
 }
 ```
 
-### 3.模块实现与接口导出分离
+### 2.3 模块实现与接口导出分离
 
 > 通过命名空间隔离模块实现和接口导出, 可以有选择的控制导出接口
 
@@ -188,7 +302,7 @@ export namespace mcpplibs {
 };
 ```
 
-### 4.模块及模块分区命名规范
+### 2.4 模块及模块分区命名规范
 
 > 使用文件(及目录)名 + `.`层级分割符进行模块命名, 降低同名模块冲突概率
 
@@ -237,7 +351,7 @@ int main() {
 }
 ```
 
-### 5.多文件模块和目录
+### 2.5 多文件模块和目录
 
 > 当一个模块内容太多, 需要进一步分文件时可以采用 `目录` + `模块或模块分区组合`的方式进行实现
 
@@ -245,7 +359,7 @@ int main() {
   - 文件夹: 同一模块的实现分散到不同文件实现
   - 模块文件: 对外接口导出的汇总文件
 
-#### 5.1 项目结构
+#### 2.5.1 项目结构
 
 ```cpp
 .
@@ -263,7 +377,7 @@ int main() {
 3 directories, 7 files
 ```
 
-#### 5.2 模块
+#### 2.5.2 模块
 
 **`a.b`模块**
 
@@ -312,11 +426,11 @@ export namespace a {
 }
 ```
 
-### 6.可导出模块分区和内部模块分区
+### 2.6 可导出模块分区和内部模块分区
 
-> 当一个模块有多个分区时, 分可导出的分区已经仅内部使用的部分
+> 当一个模块有多个分区时，应区分可导出的分区以及仅供内部使用的分区
 
-#### 6.1 分区实现
+#### 2.6.1 分区实现
 
 **`a.a2`可导出模块分区**
 
@@ -341,7 +455,7 @@ module a:a1;
 void test() { } // ok
 ```
 
-#### 6.2 使用分区
+#### 2.6.2 使用分区
 
 ```cpp
 export module a;
@@ -351,9 +465,9 @@ export import :a2; // 使用可导出分区要加export
 import :a1; // 使用内部分区不能加export且只能模块内部使用
 ```
 
-### 7.模块化与向前兼容
+### 2.7 模块化与向前兼容
 
-> C/C++以有生态中没有模块化的库, 可以把项目所有引入的传统头文件库封装到一个专门的"兼容模块中", 然后在该模块中把接口进行"重新导出", 来最小化 `全局模块/传统头文件` 的使用范围
+> C/C++已有生态中没有模块化的库, 可以把项目所有引入的传统头文件库封装到一个专门的"兼容模块中", 然后在该模块中把接口进行"重新导出", 来最小化 `全局模块/传统头文件` 的使用范围
 
 `c语言lua库, 以lua.cppm的方式用模块化"重导入"`
 
@@ -384,7 +498,7 @@ export namespace lua {
 }
 ```
 
-### 8.其他
+### 2.8 其他
 
 >...
 
