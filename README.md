@@ -51,6 +51,7 @@ int main() {
 import std;
 
 namespace mcpplibs {  // 1.命名空间全小写
+namespace mylib {
 
 class StyleRef {     // 2.类型名大驼峰
 
@@ -85,7 +86,8 @@ private:
 
 };
 
-}
+} // mylib
+} // mcpplibs
 ```
 
 ### 1.0 类型名 - 大驼峰
